@@ -15,7 +15,7 @@ async function connect(token: string) {
 }
 
 async function main() {
-  const teina = await connect("tk-teina");
+  const teina = await connect(process.env.SMOKE_TEINA ?? "tk-teina");
   const tools = await teina.listTools();
   console.log("TOOLS:", tools.tools.map((t) => t.name).join(", "));
   const who = await teina.callTool({ name: "whoami", arguments: {} });
@@ -25,7 +25,7 @@ async function main() {
   console.log("PROJECTS_LIST has ILLIG:", txt.includes("ILLIG France"));
   await teina.close();
 
-  const balla = await connect("tk-balla");
+  const balla = await connect(process.env.SMOKE_BALLA ?? "tk-balla");
   const upd = await balla.callTool({ name: "project_update", arguments: { slug: "illig-france", bloquant: "x" } });
   console.log("BALLA project_update isError:", upd.isError === true, "|", JSON.stringify(upd.content).slice(0, 140));
   await balla.close();
