@@ -93,3 +93,14 @@ export const verification = pgTable("verification", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// --- Inter-agent message channel (MCP) ---
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  fromUser: ownerEnum("from_user").notNull(),
+  toUser: ownerEnum("to_user").notNull(),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  text: text("text").notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
