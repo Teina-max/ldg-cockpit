@@ -11,6 +11,10 @@ export function emailForUser(user: "teina" | "balla"): string | undefined {
   return user === "teina" ? process.env.EMAIL_TEINA : process.env.EMAIL_BALLA;
 }
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 const SUBJECTS: Record<string, string> = {
   status_changed: "Statut projet mis à jour",
   bloquant_changed: "Bloquant projet",
@@ -40,7 +44,8 @@ export async function postToN8n(e: NotifyEvent): Promise<void> {
   const { destinataire } = buildNotification(e);
   const to = emailForUser(destinataire);
   if (!to) return;
-  await post({ type: e.type, to_email: to, subject: `[LDG Cockpit] ${SUBJECTS[e.type] ?? "Notification"}`, body: e.summary });
+  const body = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px">${escHtml(e.summary)}</div>`;
+  await post({ type: e.type, to_email: to, subject: `[LDG Cockpit] ${SUBJECTS[e.type] ?? "Notification"}`, body });
 }
 
 // Arbitrary email (used by email_report).
