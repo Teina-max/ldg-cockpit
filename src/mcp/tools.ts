@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { Identity } from "./auth";
 import { assertRole } from "./guards";
 import * as data from "./data";
+import { buildReport } from "./report";
+import { sendMail, emailForUser } from "@/lib/notify";
 
 const ok = (obj: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(obj, null, 2) }] });
 const slug = z.string().max(120);
@@ -49,4 +51,20 @@ export function registerTools(server: McpServer, id: Identity) {
 
   server.registerTool("message_mark_read", { description: "Marque un message comme lu", inputSchema: { id: z.number().int().positive() } },
     async ({ id: mid }) => ok({ marked: await data.markRead(mid, id.user) }));
+
+  server.registerTool("email_report", {
+    description: "Envoie par email un reporting des projets (to: teina | balla | both, défaut both)",
+    inputSchema: { to: z.enum(["teina", "balla", "both"]).optional() },
+  }, async ({ to }) => {
+    const projects = await data.listProjects();
+    const pending = await data.pendingInputs();
+    const { subject, body } = buildReport(projects, pending);
+    const targets: Array<"teina" | "balla"> = to === "teina" ? ["teina"] : to === "balla" ? ["balla"] : ["teina", "balla"];
+    const sent: string[] = [];
+    for (const u of targets) {
+      const email = emailForUser(u);
+      if (email) { await sendMail(email, subject, body); sent.push(email); }
+    }
+    return ok({ sent, subject });
+  });
 }
