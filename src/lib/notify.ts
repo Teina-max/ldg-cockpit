@@ -17,6 +17,7 @@ export async function postToN8n(e: NotifyEvent): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-webhook-secret": secret },
       body: JSON.stringify({ ...payload, type: e.type }),
+      signal: AbortSignal.timeout(5000), // never let a hanging n8n block the mutation
     });
   } catch (err) {
     console.error("n8n notify failed", err); // fail-soft: never block the mutation
