@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, or, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, tasks, messages } from "@/db/schema";
 import { createEvent } from "@/lib/events";
@@ -18,7 +18,7 @@ export async function getProject(slug: string) {
 export async function pendingInputs(slug?: string) {
   if (slug) {
     const [p] = await db.select().from(projects).where(eq(projects.slug, slug));
-    if (!p) return [];
+    if (!p) throw new Error("Projet introuvable");
     return db.select().from(tasks).where(and(eq(tasks.projectId, p.id), eq(tasks.status, "todo")));
   }
   return db.select().from(tasks).where(eq(tasks.status, "todo"));
@@ -62,6 +62,8 @@ export async function addTask(slug: string, title: string, detail: string, leveB
 export async function completeTask(taskId: number) {
   const [t] = await db.select().from(tasks).where(eq(tasks.id, taskId));
   if (!t) throw new Error("Tâche introuvable");
+  // Balla only completes Balla-owned tasks (scope enforced in code, not just by data shape).
+  if (t.owner !== "balla") throw new Error("Tâche hors de ton périmètre");
   const [p] = await db.select().from(projects).where(eq(projects.id, t.projectId));
   if (!p) throw new Error("Projet introuvable");
   await db.update(tasks).set({ status: "done", doneAt: new Date() }).where(eq(tasks.id, taskId));
@@ -72,6 +74,7 @@ export async function completeTask(taskId: number) {
 }
 
 export async function sendMessage(from: "teina" | "balla", to: "teina" | "balla", text: string, slug?: string) {
+  if (to === from) throw new Error("Le destinataire doit être l'autre agent");
   let projectId: number | null = null;
   if (slug) {
     const [p] = await db.select().from(projects).where(eq(projects.slug, slug));
@@ -86,9 +89,12 @@ export async function inbox(user: "teina" | "balla", unreadOnly: boolean) {
   const cond = unreadOnly
     ? and(eq(messages.toUser, user), isNull(messages.readAt))
     : eq(messages.toUser, user);
-  return db.select().from(messages).where(cond);
+  return db.select().from(messages).where(cond).orderBy(desc(messages.createdAt)).limit(100);
 }
 
 export async function markRead(id: number, user: "teina" | "balla") {
-  await db.update(messages).set({ readAt: new Date() }).where(and(eq(messages.id, id), eq(messages.toUser, user)));
+  const res = await db.update(messages).set({ readAt: new Date() })
+    .where(and(eq(messages.id, id), eq(messages.toUser, user))).returning({ id: messages.id });
+  if (res.length === 0) throw new Error("Message introuvable ou hors périmètre");
+  return id;
 }
