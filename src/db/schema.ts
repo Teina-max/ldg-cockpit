@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, boolean, serial, integer, pgEnum } from "drizzle-orm/pg-core";
 
 export const groupEnum = pgEnum("group", ["prod", "build", "cadrage"]);
-export const ownerEnum = pgEnum("owner", ["teina", "balla"]);
+export const ownerEnum = pgEnum("owner", ["teina", "balla", "younes"]);
 export const originEnum = pgEnum("origin", ["input_client", "ad_hoc"]);
 export const taskStatusEnum = pgEnum("task_status", ["todo", "done"]);
 

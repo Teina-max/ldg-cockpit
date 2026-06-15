@@ -1,17 +1,20 @@
 import { db } from "../db";
 import { events } from "../db/schema";
+import type { User } from "./users";
 
 export type EventInput = {
   type: "status_changed" | "bloquant_changed" | "task_added" | "task_done";
-  actor: "teina" | "balla";
+  actor: User;
   projectNom: string;
   detail: string;
   projectId?: number;
   taskId?: number;
 };
 
+const WHO: Record<User, string> = { teina: "Teina", balla: "Balla", younes: "Younes" };
+
 export function summarize(e: Pick<EventInput, "type" | "actor" | "projectNom" | "detail">): string {
-  const who = e.actor === "balla" ? "Balla" : "Teina";
+  const who = WHO[e.actor];
   switch (e.type) {
     case "status_changed":
       return `${e.projectNom} : statut mis à jour — ${e.detail}`;

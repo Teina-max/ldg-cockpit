@@ -26,13 +26,13 @@ export async function updateProject(
       type: "bloquant_changed", actor: "teina", projectNom: before.nom,
       detail: form.bloquant || "levé", projectId: before.id,
     });
-    await postToN8n({ type: "bloquant_changed", actor: "teina", summary });
+    await postToN8n({ type: "bloquant_changed", actor: "teina", to: "balla", summary });
   } else if (before.phase !== form.phase || before.avancement !== form.avancement) {
     const summary = await createEvent({
       type: "status_changed", actor: "teina", projectNom: before.nom,
       detail: `${form.phase} — ${form.avancement}`, projectId: before.id,
     });
-    await postToN8n({ type: "status_changed", actor: "teina", summary });
+    await postToN8n({ type: "status_changed", actor: "teina", to: "balla", summary });
   }
 
   revalidatePath(`/projets/${slug}`);

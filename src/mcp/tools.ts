@@ -5,6 +5,7 @@ import { assertRole } from "./guards";
 import * as data from "./data";
 import { buildReport } from "./report";
 import { sendMail, emailForUser } from "@/lib/notify";
+import type { User } from "@/lib/users";
 
 const ok = (obj: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(obj, null, 2) }] });
 const slug = z.string().max(120);
@@ -29,21 +30,21 @@ export function registerTools(server: McpServer, id: Identity) {
   server.registerTool("project_update", {
     description: "Met à jour un projet (réservé à Teina)",
     inputSchema: { slug, phase: shortText.optional(), avancement: shortText.optional(), bloquant: shortText.optional(), statutDetail: z.string().max(8000).optional(), nextActionTeina: shortText.optional() },
-  }, async ({ slug, ...patch }) => { assertRole(id.role, "teina"); return ok(await data.updateProject(slug, patch)); });
+  }, async ({ slug, ...patch }) => { assertRole(id.role, "editor"); return ok(await data.updateProject(slug, patch)); });
 
   server.registerTool("task_add", {
-    description: "Ajoute une tâche pour Balla (réservé à Teina)",
-    inputSchema: { project: slug, title: z.string().max(300), detail: z.string().max(4000).optional(), leveBloquant: z.boolean().optional() },
-  }, async ({ project, title, detail, leveBloquant }) => { assertRole(id.role, "teina"); return ok({ taskId: await data.addTask(project, title, detail ?? "", leveBloquant ?? false) }); });
+    description: "Ajoute une tâche pour un collaborateur (réservé à Teina). owner: balla (défaut) ou younes.",
+    inputSchema: { project: slug, title: z.string().max(300), detail: z.string().max(4000).optional(), leveBloquant: z.boolean().optional(), owner: z.enum(["balla", "younes"]).optional() },
+  }, async ({ project, title, detail, leveBloquant, owner }) => { assertRole(id.role, "editor"); return ok({ taskId: await data.addTask(project, title, detail ?? "", leveBloquant ?? false, owner ?? "balla") }); });
 
   server.registerTool("task_complete", {
-    description: "Marque une tâche comme faite (réservé à Balla)",
+    description: "Marque une de ses propres tâches comme faite (réservé aux collaborateurs)",
     inputSchema: { task_id: z.number().int().positive() },
-  }, async ({ task_id }) => { assertRole(id.role, "balla"); return ok({ done: await data.completeTask(task_id) }); });
+  }, async ({ task_id }) => { assertRole(id.role, "member"); return ok({ done: await data.completeTask(task_id, id.user) }); });
 
   server.registerTool("message_send", {
-    description: "Envoie un message à l'autre agent (teina|balla)",
-    inputSchema: { to: z.enum(["teina", "balla"]), text: z.string().max(4000), project: slug.optional() },
+    description: "Envoie un message à un autre agent (teina|balla|younes)",
+    inputSchema: { to: z.enum(["teina", "balla", "younes"]), text: z.string().max(4000), project: slug.optional() },
   }, async ({ to, text, project }) => ok({ id: await data.sendMessage(id.user, to, text, project) }));
 
   server.registerTool("inbox", { description: "Mes messages reçus", inputSchema: { unread_only: z.boolean().optional() } },
@@ -53,13 +54,17 @@ export function registerTools(server: McpServer, id: Identity) {
     async ({ id: mid }) => ok({ marked: await data.markRead(mid, id.user) }));
 
   server.registerTool("email_report", {
-    description: "Envoie par email un reporting des projets (to: teina | balla | both, défaut both)",
-    inputSchema: { to: z.enum(["teina", "balla", "both"]).optional() },
+    description: "Envoie par email un reporting des projets (to: teina | balla | younes | both [teina+balla] | all, défaut both)",
+    inputSchema: { to: z.enum(["teina", "balla", "younes", "both", "all"]).optional() },
   }, async ({ to }) => {
     const projects = await data.listProjects();
     const pending = await data.pendingInputs();
     const { subject, body } = buildReport(projects, pending);
-    const targets: Array<"teina" | "balla"> = to === "teina" ? ["teina"] : to === "balla" ? ["balla"] : ["teina", "balla"];
+    const targetsByKey: Record<string, User[]> = {
+      teina: ["teina"], balla: ["balla"], younes: ["younes"],
+      both: ["teina", "balla"], all: ["teina", "balla", "younes"],
+    };
+    const targets: User[] = targetsByKey[to ?? "both"];
     const sent: string[] = [];
     for (const u of targets) {
       const email = emailForUser(u);

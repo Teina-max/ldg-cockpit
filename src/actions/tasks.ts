@@ -33,7 +33,7 @@ export async function toggleTask(taskId: number, done: boolean) {
     const summary = await createEvent({
       type: "task_done", actor: "balla", projectNom: p.nom, detail: t.title, projectId: p.id, taskId,
     });
-    await postToN8n({ type: "task_done", actor: "balla", summary });
+    await postToN8n({ type: "task_done", actor: "balla", to: "teina", summary });
   }
 
   revalidatePath("/mes-taches");
@@ -54,7 +54,7 @@ export async function createTask(projectId: number, title: string, detail: strin
   const summary = await createEvent({
     type: "task_added", actor: "teina", projectNom: p.nom, detail: title, projectId, taskId: row.id,
   });
-  await postToN8n({ type: "task_added", actor: "teina", summary });
+  await postToN8n({ type: "task_added", actor: "teina", to: "balla", summary });
 
   revalidatePath("/mes-taches");
   revalidatePath(`/projets/${p.slug}`);

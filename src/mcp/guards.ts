@@ -1,3 +1,5 @@
+import type { Role } from "../lib/users";
+
 export class RoleError extends Error {
   constructor(required: string) {
     super(`Action réservée au rôle « ${required} »`);
@@ -5,6 +7,6 @@ export class RoleError extends Error {
   }
 }
 
-export function assertRole(actual: "teina" | "balla", required: "teina" | "balla"): void {
+export function assertRole(actual: Role, required: Role): void {
   if (actual !== required) throw new RoleError(required);
 }

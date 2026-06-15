@@ -1,14 +1,21 @@
-export type NotifyEvent = { type: string; actor: "teina" | "balla"; summary: string };
-export type Notification = { destinataire: "teina" | "balla"; message: string };
+import type { User } from "./users";
+
+// `to` is the explicit recipient — callers decide who gets notified (no "other party" guess,
+// which is undefined once there are 3+ identities).
+export type NotifyEvent = { type: string; actor: User; to: User; summary: string };
+export type Notification = { destinataire: User; message: string };
 
 export function buildNotification(e: NotifyEvent): Notification {
-  // recipient is the OTHER party from the actor
-  const destinataire = e.actor === "teina" ? "balla" : "teina";
-  return { destinataire, message: e.summary };
+  return { destinataire: e.to, message: e.summary };
 }
 
-export function emailForUser(user: "teina" | "balla"): string | undefined {
-  return user === "teina" ? process.env.EMAIL_TEINA : process.env.EMAIL_BALLA;
+export function emailForUser(user: User): string | undefined {
+  const map: Record<User, string | undefined> = {
+    teina: process.env.EMAIL_TEINA,
+    balla: process.env.EMAIL_BALLA,
+    younes: process.env.EMAIL_YOUNES,
+  };
+  return map[user];
 }
 
 function escHtml(s: string): string {

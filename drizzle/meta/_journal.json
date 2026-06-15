@@ -15,6 +15,13 @@
       "when": 1781549051120,
       "tag": "0001_hard_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781560584190,
+      "tag": "0002_silent_vermin",
+      "breakpoints": true
     }
   ]
 }
